@@ -130,6 +130,7 @@ func (s *sdsservice) StreamSecrets(stream sds.SecretDiscoveryService_StreamSecre
 	var receiveError error
 	reqChannel := make(chan *xdsapi.DiscoveryRequest, 1)
 	con := newSDSConnection(stream)
+	log.Debugf("Started SDS stream %p", con);
 
 	go receiveThread(con, reqChannel, &receiveError)
 
@@ -147,8 +148,6 @@ func (s *sdsservice) StreamSecrets(stream sds.SecretDiscoveryService_StreamSecre
 				return fmt.Errorf("invalid discovery request with no node")
 			}
 
-			log.Debugf("Received discovery request from %q", discReq.Node.Id)
-
 			resourceName, err := parseDiscoveryRequest(discReq)
 			if err != nil {
 				log.Errorf("Failed to parse discovery request: %v", err)
@@ -157,12 +156,12 @@ func (s *sdsservice) StreamSecrets(stream sds.SecretDiscoveryService_StreamSecre
 			con.proxyID = discReq.Node.Id
 			con.ResourceName = resourceName
 
-			log.Debugf("Received SDS request from %q, resourceName %q, versionInfo %q\n", discReq.Node.Id, resourceName, discReq.VersionInfo)
+			log.Debugf("Received SDS request at %p from %q, resourceName %q, versionInfo %q\n", con, discReq.Node.Id, resourceName, discReq.VersionInfo)
 			// When nodeagent receives StreamSecrets request, if there is cached secret which matches
 			// request's <token, resourceName, Version>, then this request is a confirmation request.
 			// nodeagent stops sending response to envoy in this case.
 			if discReq.VersionInfo != "" && s.st.SecretExist(discReq.Node.Id, resourceName, token, discReq.VersionInfo) {
-				log.Debugf("Received SDS ACK from %q, resourceName %q, versionInfo %q\n", discReq.Node.Id, resourceName, discReq.VersionInfo)
+				log.Debugf("Received SDS ACK at %p from %q, resourceName %q, versionInfo %q\n", con, discReq.Node.Id, resourceName, discReq.VersionInfo)
 				continue
 			}
 
